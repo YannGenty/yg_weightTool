@@ -19,7 +19,7 @@ import maya.OpenMaya as om
 
 __author__      = "Yann GENTY"
 __email__       = "y.genty.cs@gmail.com"
-__version__     = "1.3.0"
+__version__     = "1.3.1"
 __copyright__   = "Copyright (c) 2024, Yann GENTY"
 
 ############################## FUNCTIONS ##
@@ -299,7 +299,7 @@ def setObject(index):
             for inputNode in cmds.listHistory(sel, pdo=True):
                 if cmds.nodeType(inputNode) in listFilter():
                     if cmds.nodeType(inputNode) == "blendShape": #custom system to add all blendshape targets
-                        targets = [str(inputNode) + "." +  shapes for shapes in cmds.blendShape(inputNode, query=True, target=True)]
+                        targets = [str(inputNode) + "." +  shapes for shapes in cmds.listAttr(inputNode + '.w', multi=True)]
                         for target in targets:
                             cmds.textScrollList("tsl", edit=True, a=[str(target)])
                             deformers.append(target)
