@@ -19,7 +19,7 @@ import maya.OpenMaya as om
 
 __author__      = "Yann GENTY"
 __email__       = "y.genty.cs@gmail.com"
-__version__     = "1.3.3"
+__version__     = "1.4.0"
 __copyright__   = "Copyright (c) 2024, Yann GENTY"
 
 ############################## FUNCTIONS ##
@@ -634,6 +634,23 @@ def softWeight():
 
                     message("soft weight done")
 
+def addWeight():
+    '''add selected component (only vertex) in selected deformer influence'''
+    deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
+    deformerSet = cmds.listConnections(deformer, type="objectSet")[0]
+    sel = cmds.ls(sl=True, fl=True)
+    if cmds.nodeType(deformer) == "skinCluster" or "." in deformer:
+        message("does not work for skinCluster or blendshape")
+        return
+    else:
+        for component in sel:
+            if not "vtx" in component:
+                message("select only vertex")
+                return
+        for vtx in sel:
+            cmds.sets(vtx, add=deformerSet)
+        message("vertex add in " + deformer)
+
 #################################### LIB ##
 
 global pasteWeight
@@ -841,8 +858,12 @@ def mainWindow():
     cmds.menuItem("dvd0", parent=ppm, label="", divider=True)
     cmds.menuItem(parent=ppm, label="sel vertices member", c=Callback(selectInfluence, 2))
     cmds.menuItem(parent=ppm, label="sel vertices member on mesh", ann="select influenced vertices only on selected mesh", c=Callback(selectInfluence, 1))
-    cmds.menuItem(parent=ppm, label="", divider=True)
     cmds.menuItem("cb0", parent=ppm, label="autoframe on sel", checkBox=True, c=Callback(autoFrame))
+    cmds.menuItem(parent=ppm, label="", divider=True)
+    cmds.menuItem(parent=ppm, label="add sel to deformer", ann="add selected component to deformer influence, does not work for blendshape and skinCluster", c=Callback(addWeight))
+    # TODO
+    #cmds.menuItem("cb2", parent=ppm, label="auto add sel to deformer", ann="automatically add components not under the influence of the deformer", checkBox=False, c=Callback(addWeight))    
+    cmds.menuItem(parent=ppm, label="", divider=True)
     cmds.menuItem(parent=ppm, label="open paint tool", ann="open the appropriate paint weight tool and select the deformer", c=Callback(openTool).repeatable())
     cmds.menuItem(parent=ppm, label="soft sel weight", ann="transforms softSelection values into weight, does not work for skinCluster", c=Callback(softWeight).repeatable())
     cmds.menuItem(parent=ppm, label="", divider=True)
