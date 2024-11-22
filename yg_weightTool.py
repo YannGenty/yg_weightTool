@@ -4,7 +4,7 @@ import maya.mel as mel
 from PySide2.QtGui import QCursor
 import maya.OpenMaya as om
 
-'''yg_weightTool.py, small tool to copy/paste, smooth, soft and add weights values'''
+'''yg_weightTool.py, small tool to copy/paste, smooth, soft and set weights values'''
 
 '''use:
    ->just drag and n drop on maya to open it
@@ -14,18 +14,15 @@ import maya.OpenMaya as om
 '''base settings:
     ->ctrl + c: copy weights
     ->ctrl + v: paste weights
-    ->ctrl + x: add weights
+    ->ctrl + x: set weights
     ->alt + x: smooth weights'''
 
 __author__      = "Yann GENTY"
 __email__       = "y.genty.cs@gmail.com"
-__version__     = "1.3.1"
+__version__     = "1.3.3"
 __copyright__   = "Copyright (c) 2024, Yann GENTY"
 
 ############################## FUNCTIONS ##
-
-def onMayaDroppedPythonFile(args):
-    print(args)
 
 class Callback():
     __author__ = "Adrien PARIS"
@@ -77,17 +74,17 @@ def datahotkeys():
     letterPaste = cmds.textField("Stf_2", q=True, tx=True)[0]
     namePaste = "pasteWeight"
 
-    altAdd = cmds.checkBox("Scb_3a", q=True, v=True)
-    ctrlAdd = cmds.checkBox("Scb_3b", q=True, v=True)
-    letterAdd = cmds.textField("Stf_3", q=True, tx=True)[0]
-    nameAdd = "addWeight"
+    altSet = cmds.checkBox("Scb_3a", q=True, v=True)
+    ctrlSet = cmds.checkBox("Scb_3b", q=True, v=True)
+    letterSet = cmds.textField("Stf_3", q=True, tx=True)[0]
+    nameSet = "setWeight"
 
     altSmooth = cmds.checkBox("Scb_4a", q=True, v=True)
     ctrlSmooth = cmds.checkBox("Scb_4b", q=True, v=True)
     letterSmooth = cmds.textField("Stf_4", q=True, tx=True)[0]
     nameSmooth = "smoothWeight"    
 
-    return [[nameCopy, altCopy, ctrlCopy, letterCopy],[namePaste, altPaste, ctrlPaste, letterPaste],[nameAdd, altAdd, ctrlAdd, letterAdd],[nameSmooth, altSmooth, ctrlSmooth, letterSmooth]]
+    return [[nameCopy, altCopy, ctrlCopy, letterCopy],[namePaste, altPaste, ctrlPaste, letterPaste],[nameSet, altSet, ctrlSet, letterSet],[nameSmooth, altSmooth, ctrlSmooth, letterSmooth]]
 
 def setHotkeys():
     '''enable/disabled hotkeys'''
@@ -107,11 +104,11 @@ def setHotkeys():
     letterPaste = datas[1][3]
     cmds.optionVar(intValue=[("altPaste", altPaste),("ctrlPaste", ctrlPaste)], stringValue=[("letterPaste", letterPaste)])
 
-    nameAdd = datas[2][0]
-    altAdd = datas[2][1]
-    ctrlAdd = datas[2][2]
-    letterAdd = datas[2][3]
-    cmds.optionVar(intValue=[("altAdd", altAdd),("ctrlAdd", ctrlAdd)], stringValue=[("letterAdd", letterAdd)])
+    nameSet = datas[2][0]
+    altSet = datas[2][1]
+    ctrlSet = datas[2][2]
+    letterSet = datas[2][3]
+    cmds.optionVar(intValue=[("altSet", altSet),("ctrlSet", ctrlSet)], stringValue=[("letterSet", letterSet)])
 
     nameSmooth = datas[3][0]
     altSmooth = datas[3][1]
@@ -122,11 +119,16 @@ def setHotkeys():
     if cmds.button("Sb1", query=True, bgc=True) == COLOR_BASE:
         cmds.hotkey(keyShortcut=letterCopy, ctrlModifier=ctrlCopy, altModifier=altCopy, name="") #erase hotkeys if already exists
         cmds.hotkey(keyShortcut=letterPaste, ctrlModifier=ctrlPaste, altModifier=altPaste, name="")
-        cmds.hotkey(keyShortcut=letterAdd, ctrlModifier=ctrlAdd, altModifier=altAdd, name="")
+        cmds.hotkey(keyShortcut=letterSet, ctrlModifier=ctrlSet, altModifier=altSet, name="")
         cmds.hotkey(keyShortcut=letterSmooth, ctrlModifier=ctrlSmooth, altModifier=altSmooth, name="")
 
+        #duplicate the default hotkeyset if its selected (bc we can't add new hotkeys on Maya Default hotkey set)
+        if cmds.hotkeySet(q=True, current=True ) == 'Maya_Default':
+            cmds.hotkeySet("yg_weightTool", current=True )
+            info("creation of a new hotkey set “yg_weightTool”")
+
         #delete the previous runTimeCommand if it exists
-        for rtc in [nameCopy, namePaste, nameAdd, nameSmooth]:
+        for rtc in [nameCopy, namePaste, nameSet, nameSmooth]:
             if cmds.runTimeCommand(rtc, exists=True):
                 cmds.runTimeCommand(rtc, e=True, delete=True)
 
@@ -139,9 +141,9 @@ def setHotkeys():
         cmds.nameCommand(namePaste, ann="pasteWeight for yg_weightPaster", c='python("copyPaste(2)")', sourceType="python")
         cmds.hotkey(keyShortcut=letterPaste, ctrlModifier=ctrlPaste, altModifier=altPaste, name=namePaste)
 
-        cmds.runTimeCommand(nameAdd, annotation="addWeight for yg_weightPaster", category='Custom Scripts', commandLanguage="python", command="addWeightWindow()")
-        cmds.nameCommand(nameAdd, ann="addWeight for yg_weightPaster", c='python("addWeightWindow()")', sourceType="python")
-        cmds.hotkey(keyShortcut=letterAdd, ctrlModifier=ctrlAdd, altModifier=altAdd, name=nameAdd)
+        cmds.runTimeCommand(nameSet, annotation="setWeight for yg_weightPaster", category='Custom Scripts', commandLanguage="python", command="setWeightWindow()")
+        cmds.nameCommand(nameSet, ann="setWeight for yg_weightPaster", c='python("setWeightWindow()")', sourceType="python")
+        cmds.hotkey(keyShortcut=letterSet, ctrlModifier=ctrlSet, altModifier=altSet, name=nameSet)
 
         cmds.runTimeCommand(nameSmooth, annotation="smoothWeight for yg_weightPaster", category='Custom Scripts', commandLanguage="python", command="smoothWeight()")
         cmds.nameCommand(nameSmooth, ann="smoothWeight for yg_weightPaster", c='python("smoothWeight()")', sourceType="python")
@@ -153,12 +155,12 @@ def setHotkeys():
 
         cmds.textField("Stf_1", e=True, tx=letterCopy) #refresh display
         cmds.textField("Stf_2", e=True, tx=letterPaste)
-        cmds.textField("Stf_3", e=True, tx=letterAdd)
+        cmds.textField("Stf_3", e=True, tx=letterSet)
         cmds.textField("Stf_4", e=True, tx=letterSmooth)
 
         cmds.menuItem("mi1", edit=True, label=annSettingsButton("copy")) #refresh UI
         cmds.menuItem("mi2", edit=True, label=annSettingsButton("paste"))
-        cmds.menuItem("mi3", edit=True, label=annSettingsButton("add"))
+        cmds.menuItem("mi3", edit=True, label=annSettingsButton("set"))
         cmds.menuItem("mi4", edit=True, label=annSettingsButton("smooth"))
 
     else:
@@ -166,15 +168,15 @@ def setHotkeys():
 
         cmds.hotkey(keyShortcut=letterCopy, ctrlModifier=ctrlCopy, altModifier=altCopy, n="")
         cmds.hotkey(keyShortcut=letterPaste, ctrlModifier=ctrlPaste, altModifier=altPaste, n="")
-        cmds.hotkey(keyShortcut=letterAdd, ctrlModifier=ctrlAdd, altModifier=altAdd, n="")
+        cmds.hotkey(keyShortcut=letterSet, ctrlModifier=ctrlSet, altModifier=altSet, n="")
         cmds.hotkey(keyShortcut=letterSmooth, ctrlModifier=ctrlSmooth, altModifier=altSmooth, n="")
 
-        for rtc in [nameCopy, namePaste, nameAdd, nameSmooth]:
+        for rtc in [nameCopy, namePaste, nameSet, nameSmooth]:
             if cmds.runTimeCommand(rtc, exists=True):
                 cmds.runTimeCommand(rtc, e=True, delete=True)
 
         for index in range(1, cmds.assignCommand(q=True, numElements=True) + 1): #list index of all commands and delete our own (start from 1 and not 0 otherwise maya bug)
-            if cmds.assignCommand(index, q=True, name=True) in [nameCopy,namePaste,nameAdd,nameSmooth]:
+            if cmds.assignCommand(index, q=True, name=True) in [nameCopy,namePaste,nameSet,nameSmooth]:
                 cmds.assignCommand(index, e=True, delete=True)      
 
         cmds.button("Sb1", edit=True, bgc=COLOR_BASE)
@@ -194,9 +196,9 @@ def saveHotkeys():
     ctrlPaste = datas[1][2]
     letterPaste = datas[1][3]
     
-    altAdd = datas[2][1]
-    ctrlAdd = datas[2][2]
-    letterAdd = datas[2][3]
+    altSet = datas[2][1]
+    ctrlSet = datas[2][2]
+    letterSet = datas[2][3]
     
     altSmooth = datas[3][1]
     ctrlSmooth = datas[3][2]
@@ -207,7 +209,7 @@ def saveHotkeys():
 
         cmds.optionVar(intValue=[("altCopy", altCopy),("ctrlCopy", ctrlCopy)], stringValue=[("letterCopy", letterCopy)]) #save in Prefs
         cmds.optionVar(intValue=[("altPaste", altPaste),("ctrlPaste", ctrlPaste)], stringValue=[("letterPaste", letterPaste)])
-        cmds.optionVar(intValue=[("altAdd", altAdd),("ctrlAdd", ctrlAdd)], stringValue=[("letterAdd", letterAdd)])
+        cmds.optionVar(intValue=[("altSet", altSet),("ctrlSet", ctrlSet)], stringValue=[("letterSet", letterSet)])
         cmds.optionVar(intValue=[("altSmooth", altSmooth),("ctrlSmooth", ctrlSmooth)], stringValue=[("letterSmooth", letterSmooth)])
 
         cmds.savePrefs(g=True)
@@ -217,7 +219,7 @@ def saveHotkeys():
     else:
         cmds.hotkey(autoSave=False)
 
-        cmds.optionVar(remove=["altCopy","ctrlCopy","letterCopy","altPaste","ctrlPaste","letterPaste","altAdd","ctrlAdd","letterAdd","altSmooth","ctrlSmooth","letterSmooth"])
+        cmds.optionVar(remove=["altCopy","ctrlCopy","letterCopy","altPaste","ctrlPaste","letterPaste","altSet","ctrlSet","letterSet","altSmooth","ctrlSmooth","letterSmooth"])
 
         cmds.button("Sb2", e=True, bgc=COLOR_BASE)
         message("hotkeys are no longer saved")
@@ -251,11 +253,23 @@ def autoFrame():
 def openTool():
     deformer = cmds.textScrollList("tsl", query=True, selectItem=True)
     if "." in deformer[0]:
-        mel.eval("setToolTo $gSelect") #debug (append if another tool is already open)
         cmds.select(cmds.textField("tf0", q=True, tx=True))
+
+        if not cmds.artAttrCtx("artAttrBlendShapeContext", q=True, exists=True):
+            cmds.artAttrCtx("artAttrBlendShapeContext", i1="paintBlendshape.png", whichTool="blendShapeWeights")
+                        
+        if not cmds.artAttrCtx("artBlendShapeSelectTarget", q=True, exists=True):
+            mel.eval('source "artAttrBlendShapeProperties"')
+
+        shape =  cmds.textScrollList("tsl", query=True, selectItem=True)[0].split(".")[1]
+        cmds.artAttrCtx("artAttrBlendShapeContext", e=True, toolOnProc='artBlendShapeSelectTarget artAttrCtx "{}";'.format(shape))
+
         cmds.ArtPaintBlendShapeWeightsTool()
         cmds.toolPropertyWindow()
-        mel.eval('artBlendShapeSelectTarget artAttrCtx "{}";'.format(cmds.textScrollList("tsl", query=True, selectItem=True)[0].split(".")[1]))
+
+        #old one
+        #mel.eval('artBlendShapeSelectTarget artAttrCtx "{}";'.format(cmds.textScrollList("tsl", query=True, selectItem=True)[0].split(".")[1]))          
+
     elif cmds.nodeType(deformer) == "skinCluster":
         cmds.ArtPaintSkinWeightsTool()
         cmds.toolPropertyWindow()
@@ -276,7 +290,12 @@ def setObject(index):
         if sel == ['']: #if nothing is selected, stop the function
             return
 
-    if len(sel):
+    if not len(sel):
+        message("select at least one object")
+        cmds.textField("tf0", edit=True, tx="")
+        return
+    
+    else:
         if cmds.listRelatives(sel[0], shapes=True) and cmds.nodeType(sel[0]) == "transform": #if transform with shape
             if len(sel) > 1:
                 message("select only one object")
@@ -295,7 +314,12 @@ def setObject(index):
         message("")
 
         deformers = []
-        if cmds.listHistory(sel, pdo=True):
+        if not cmds.listHistory(sel, pdo=True):
+            message("object has no deformers")
+            cmds.textField("tf0", edit=True, tx="")
+            return
+
+        else:
             for inputNode in cmds.listHistory(sel, pdo=True):
                 if cmds.nodeType(inputNode) in listFilter():
                     if cmds.nodeType(inputNode) == "blendShape": #custom system to add all blendshape targets
@@ -309,12 +333,8 @@ def setObject(index):
 
             if not deformers:
                 message("object has no visible deformers")
-        else:
-            message("object has no deformers")
-            cmds.textField("tf0", edit=True, tx="")
-    else:
-        message("select at least one object")
-        cmds.textField("tf0", edit=True, tx="")        
+
+     
     
     if oldSel: #reselect old selection if it refreshes
         try:
@@ -346,24 +366,42 @@ def selectInfluence(index):
     else:
         message("select a deformer")
 
+def checkDeformer(vtx, deformerSet):
+    '''verify if vertex is part of deformer's influence'''
+    if vtx in cmds.ls(cmds.sets(deformerSet, query=True), flatten=True):
+        return True
+    else:
+        return False
+
 def copyPaste(index):
     '''collect, calcul, paste values, differents way for skinCluster, blendshapes and other deformers'''
     global pasteWeight
     global pasteWeightSkin
 
-    if cmds.textScrollList("tsl", query=True, selectItem=True):
-        deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
-        sel = cmds.ls(cmds.polyListComponentConversion(cmds.ls(sl=True, flatten=True), toVertex=True), flatten=True)
-        deformerSet = cmds.listConnections(deformer, type="objectSet")
+    if not  cmds.textScrollList("tsl", query=True, selectItem=True):
+        message("select a deformer")
+        return
+    else:
 
-        if "." in deformer: #additionnal datas for blendshapes   
-            target = deformer.split(".")[1] #separate blendshape and target name
-            deformer_bs = deformer.split(".")[0] 
-            targetIndex = str(cmds.listAttr(deformer_bs + '.w', m=True).index(target))
-            deformerSet = cmds.listConnections(deformer_bs, type="objectSet")
 
         if index == 1:
-            if sel:
+            pasteWeightSkin.clear() #clean weights values before copy
+            #check deformer's datas
+            deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
+            sel = cmds.ls(cmds.polyListComponentConversion(cmds.ls(sl=True, flatten=True), toVertex=True), flatten=True)
+            deformerSet = cmds.listConnections(deformer, type="objectSet")
+
+            if "." in deformer: #additionnal datas for blendshapes   
+                target = deformer.split(".")[1] #separate blendshape and target name
+                deformer_bs = deformer.split(".")[0] 
+                targetIndex = str(cmds.listAttr(deformer_bs + '.w', m=True).index(target))
+                deformerSet = cmds.listConnections(deformer_bs, type="objectSet")
+
+            if not sel:
+                message("select vertex")
+                return
+            else:
+                #1. collect values
                 weightList=[]
                 if cmds.nodeType(deformer) == "skinCluster": #if skinCluster
                     jointsList = []
@@ -385,11 +423,10 @@ def copyPaste(index):
                             weight.append(cmds.skinPercent(deformer, vtx, query=True, value=True)[int(joint[1])])
 
                         joints.append([joint[0], weight])
-
+      
                 else:    
                     for vtx in sel:
-
-                        if vtx in cmds.ls(cmds.sets(deformerSet, query=True), flatten=True): #verify if vertex is part of deformer's influence, else weight value is set at 0
+                        if checkDeformer(vtx, deformerSet): #verify if vertex is part of deformer's influence, else weight value is set at 0
                             if "." in deformer:                          #if blendshape
                                 vtxIndex = vtx.split("[")[1][:-1]
 
@@ -399,52 +436,76 @@ def copyPaste(index):
                             else:                                        #other deformers
                                 weight = cmds.percent(deformer, vtx, query=True, value=True)[0]
                                 weightList.append(weight)
-                    
+                                
                         else:
                             weight = 0
                             weightList.append(weight)
+                            info(vtx + " don't part of '"+ deformer +"', his weight is set to 0")
 
+                #2. sum values
                 if cmds.nodeType(deformer) == "skinCluster":
                     msg = ""
-                    for joint, weights in joints[0], joints[1]:
+                    i=0
+                    for joint in joints:
+                        weights = joints[i][1]
+                        bone = joint[0]
                         value = round(math.fsum(weights) / len(weights), 3)
-                        pasteWeightSkin.append([joint, value])
-                        msg = msg + joint + ":" + str(value) +", "
+                        pasteWeightSkin.append((bone, value))
+                        msg = msg + bone + ":" + str(value) +", "
+                        i+=1
                     info("copy " + msg)
+              
                 else:
                     pasteWeight  = round(math.fsum(weightList) / len(weightList), 3)
-                    message("copy " + str(pasteWeight))
-                
-
-            else:
-                message("select vertex")
+                    message("copy " + str(pasteWeight))              
 
         elif index == 2:
-            if sel:
-                    if cmds.nodeType(deformer) == "skinCluster": #if skinCluster
-                        i = 0
-                        for vtx in sel:
-                            cmds.skinPercent(deformer, vtx, transformValue=[(pasteWeightSkin[i][0], pasteWeightSkin[i][1])])
-                            i += 1
-                    elif "." in deformer:                        #if blendshape
-                        for vtx in sel:
-                            vtxIndex = vtx.split("[")[1][:-1]
-                            cmds.setAttr(deformer_bs + ".inputTarget[0].inputTargetGroup[" + targetIndex + "].targetWeights[" + vtxIndex + "]", pasteWeight) 
-                        message("paste " + str(pasteWeight))
-                    else:
-                        for vtx in sel:                          #other deformers
-                            cmds.percent(deformer, vtx, value=pasteWeight)               
-                        message("paste " + str(pasteWeight))
+            #check deformer's datas (bc user can change between copy and paste)
+            deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
+            sel = cmds.ls(cmds.polyListComponentConversion(cmds.ls(sl=True, flatten=True), toVertex=True), flatten=True)
+            deformerSet = cmds.listConnections(deformer, type="objectSet")
 
-            else:
+            if "." in deformer: #additionnal datas for blendshapes   
+                target = deformer.split(".")[1] #separate blendshape and target name
+                deformer_bs = deformer.split(".")[0] 
+                targetIndex = str(cmds.listAttr(deformer_bs + '.w', m=True).index(target))
+                deformerSet = cmds.listConnections(deformer_bs, type="objectSet")
+            
+            if not sel:
                 message("select vertex")
-
-    else:
-        message("select a deformer")
+                return
+            else:
+                if cmds.nodeType(deformer) == "skinCluster": #if skinCluster            [['A', 0.5], ['B', 0.5]] -> ( string, float ), 
+                    i = 0
+                    for vtx in sel:
+                        if not checkDeformer(vtx, deformerSet):
+                            info(vtx + " isn't in '" + deformer + "', paste not applied")
+                            i += 1
+                            pass
+                        else:
+                            print(pasteWeightSkin)
+                            cmds.skinPercent(deformer, vtx, transformValue=pasteWeightSkin)
+                            i += 1
+                elif "." in deformer:                        #if blendshape
+                    for vtx in sel:
+                        vtxIndex = vtx.split("[")[1][:-1]
+                        cmds.setAttr(deformer_bs + ".inputTarget[0].inputTargetGroup[" + targetIndex + "].targetWeights[" + vtxIndex + "]", pasteWeight) 
+                    message("paste " + str(pasteWeight))
+                else:                                        #other deformers
+                    for vtx in sel:                          
+                        if not checkDeformer(vtx, deformerSet):
+                            info(vtx + " isn't in '" + deformer + "', paste not applied")
+                            pass
+                        else:                        
+                            cmds.percent(deformer, vtx, value=pasteWeight)               
+                    message("paste " + str(pasteWeight))
 
 def smoothWeight():
     '''smooth weight, depend than deformer selected'''
-    if cmds.textScrollList("tsl", query=True, selectItem=True):
+    if not cmds.textScrollList("tsl", query=True, selectItem=True):
+        message("select a deformer")
+        return
+    else:
         deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
 
         if "." in deformer:
@@ -493,10 +554,10 @@ def smoothWeight():
             cmds.artAttrCtx(cmds.currentCtx(), e=True, value=backValue)
             
             mel.eval("setToolTo $gSelect")
-    else:
-        message("select a deformer")
 
-def addWeight(deformer, sel):
+    message("smooth applied")
+
+def setWeight(deformer, sel):
     '''set a new weight on the selected vertex, dont work for skinCluster'''
     weight = cmds.floatField("ff", query=True, value=True)
     cmds.deleteUI("AWwin")
@@ -520,10 +581,22 @@ def softWeight():
     sel = cmds.ls(sl=True)
     deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
 
-    if not cmds.nodeType(deformer) == "skinCluster":
-        if sel:
-            if "vtx" in sel[0]: 
-                if cmds.softSelect(query=True, softSelectEnabled=True):
+    if cmds.nodeType(deformer) == "skinCluster":
+        message("does not work for skinCluster")
+        return
+    else:
+        if not sel:
+            message("selection is empty")
+            return
+        else:
+            if not "vtx" in sel[0]: 
+                message("select vertex")
+                return
+            else:
+                if not cmds.softSelect(query=True, softSelectEnabled=True):
+                    message("activate soft selection")
+                    return
+                else:
                     selection = om.MSelectionList()
                     softSelection = om.MRichSelection()
                     om.MGlobal.getRichSelection(softSelection)
@@ -560,15 +633,6 @@ def softWeight():
                             cmds.percent(deformer, selection[i], v=elements[i][2])
 
                     message("soft weight done")
-
-                else:
-                    message("activate soft selection")
-            else:
-                message("select vertex")
-        else:
-            message("selection is empty")
-    else:
-        message("does not work for skinCluster")
 
 #################################### LIB ##
 
@@ -626,10 +690,10 @@ def annSettingsButton(index):
     '''manage right-click for the settings button'''
     CopyString = "copy: " + str("Alt+" if cmds.checkBox("Scb_1a", q=True, v=True) else "") + str("Ctrl+" if cmds.checkBox("Scb_1b", q=True, v=True) else "") + str(cmds.textField("Stf_1", q=True, tx=True))
     PasteString = "paste: " + str("Alt+" if cmds.checkBox("Scb_2a", q=True, v=True) else "") + str("Ctrl+" if cmds.checkBox("Scb_2b", q=True, v=True) else "") + str(cmds.textField("Stf_2", q=True, tx=True))
-    AddString = "add: " + str("Alt+" if cmds.checkBox("Scb_3a", q=True, v=True) else "") + str("Ctrl+" if cmds.checkBox("Scb_3b", q=True, v=True) else "") + str(cmds.textField("Stf_3", q=True, tx=True))
+    SetString = "set: " + str("Alt+" if cmds.checkBox("Scb_3a", q=True, v=True) else "") + str("Ctrl+" if cmds.checkBox("Scb_3b", q=True, v=True) else "") + str(cmds.textField("Stf_3", q=True, tx=True))
     SmoothString = "smooth: " + str("Alt+" if cmds.checkBox("Scb_4a", q=True, v=True) else "") + str("Ctrl+" if cmds.checkBox("Scb_4b", q=True, v=True) else "") + str(cmds.textField("Stf_4", q=True, tx=True))
 
-    for string in [CopyString, PasteString, AddString, SmoothString]:
+    for string in [CopyString, PasteString, SetString, SmoothString]:
         if index == string.split(":")[0]:
             return string
 
@@ -641,7 +705,7 @@ def openSettingsWindow():
         cmds.button("Sb1", edit=True, bgc=COLOR_VALID) #initialize kotkeys buttons ("save"/"set")
         cmds.button("Sb2", edit=True, bgc=COLOR_VALID) 
     
-        for hotkey, index in zip(["Copy", "Paste", "Add", "Smooth"],[1, 2, 3, 4]): #copies existing shortcuts
+        for hotkey, index in zip(["Copy", "Paste", "Set", "Smooth"],[1, 2, 3, 4]): #copies existing shortcuts
             altValue = cmds.optionVar(q="alt" + hotkey)
             cmds.checkBox("Scb_" + str(index) + "a", e=True, v=altValue)
 
@@ -655,39 +719,43 @@ def openSettingsWindow():
 
 ##################################### UI ##
 
-def addWeightWindow():
+def setWeightWindow():
     '''open context window to set new weight on sel'''
     deformer = cmds.textScrollList("tsl", query=True, selectItem=True)
     sel = cmds.ls(sl=True, fl=True)
-    if deformer :
-        if sel:
-            if ".vtx" in sel[0]:
-                if not cmds.nodeType(deformer) == "skinCluster":
+    if not deformer :
+        message("select a deformer")
+        return
+    else:
+        if not sel:
+            message("empty selection")
+            return
+        else:
+            if not ".vtx" in sel[0]:
+                message("select vertex")
+                return
+            else:
+                if cmds.nodeType(deformer) == "skinCluster":
+                    message("does not work for skinCluster")
+                    return
+                else:
                     if cmds.window("AWwin", exists=True):
                         cmds.deleteUI("AWwin")
                 
 
                     cmds.window("AWwin", tlb=True, t=deformer[0])
                     AWform = cmds.formLayout(h=40, p="AWwin")
-                    cmds.floatField("ff", p=AWform, pre=3, cc=Callback(addWeight, deformer[0], sel))
+                    cmds.floatField("ff", p=AWform, pre=3, cc=Callback(setWeight, deformer[0], sel))
                     cmds.formLayout(AWform, edit=True, attachForm=[("ff", 'bottom', 0),("ff", 'top', 0),("ff", 'left', 0),("ff", 'right', 0)])
                     cmds.showWindow("AWwin")
 
                     coordX, coordY = QCursor.pos().x(), QCursor.pos().y() #get pointer global position on screen
                     cmds.window("AWwin", edit=True, topLeftCorner=[50+coordY, 50+coordX])
-                else:
-                    message("does not work for skinCluster")
-            else:
-                message("select vertex")
-        else:
-            message("empty selection")
-    else:
-        message("select a deformer")
 
 def settingsWindow():
     '''create window for all settings'''
     cmds.window("Settings", tlb=True, t="Settings", ret=True)  #ret=retains the window after it has been closed
-    Sform = cmds.formLayout(p="Settings", numberOfDivisions=100, h=150, w=250)
+    Sform = cmds.formLayout("ahahah", p="Settings", numberOfDivisions=100, h=150, w=250)
 
     St_1 = cmds.text("St_1", p=Sform, l="copy: ", al="right")
     Scb_1a = cmds.checkBox("Scb_1a", p=Sform, l="Alt", v=False, cc=Callback(resetSetButton))
@@ -699,7 +767,7 @@ def settingsWindow():
     Scb_2b = cmds.checkBox("Scb_2b", p=Sform, l="Ctrl", v=True, cc=Callback(resetSetButton))
     Stf_2 = cmds.textField("Stf_2", p=Sform, tx="v", cc=Callback(resetSetButton))
 
-    St_3 = cmds.text("St_3", p=Sform, l="add: ", al="right")
+    St_3 = cmds.text("St_3", p=Sform, l="set: ", al="right")
     Scb_3a = cmds.checkBox("Scb_3a", p=Sform, l="Alt", v=False, cc=Callback(resetSetButton))
     Scb_3b = cmds.checkBox("Scb_3b", p=Sform, l="Ctrl", v=True, cc=Callback(resetSetButton))
     Stf_3 = cmds.textField("Stf_3", p=Sform, tx="x", cc=Callback(resetSetButton))
@@ -753,7 +821,7 @@ def mainWindow():
     cmds.workspaceControl(W_NAME)
 
     #buttons
-    form =  cmds.formLayout(numberOfDivisions=100, w=167, h=243)
+    form =  cmds.formLayout(numberOfDivisions=100, w=240, h=243)
     t0 = cmds.text(l="object", al="right")
     tf0 = cmds.textField("tf0", tx="")
     b0 = cmds.button(l="set", h=20, ann="set objets selection", c=Callback(setObject,0).repeatable())
@@ -798,7 +866,7 @@ def mainWindow():
     cmds.menuItem(parent=ppm2, label="hotkeys", subMenu=True, itl=True, divider=True)
     cmds.menuItem("mi1", parent=ppm2, label=annSettingsButton("copy"), itl=True, en=False)
     cmds.menuItem("mi2", parent=ppm2, label=annSettingsButton("paste"), itl=True, en=False)
-    cmds.menuItem("mi3", parent=ppm2, label=annSettingsButton("add"), itl=True, en=False)
+    cmds.menuItem("mi3", parent=ppm2, label=annSettingsButton("set"), itl=True, en=False)
     cmds.menuItem("mi4", parent=ppm2, label=annSettingsButton("smooth"), itl=True, en=False)
 
 def initialize():
@@ -806,6 +874,8 @@ def initialize():
     if cmds.ls(sl=True):
         setObject(0)
 
-
 mainWindow()
 initialize()
+
+def onMayaDroppedPythonFile(args) :
+    print(args)
