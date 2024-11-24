@@ -4,14 +4,14 @@ import maya.mel as mel
 from PySide2.QtGui import QCursor
 import maya.OpenMaya as om
 
-'''yg_weightTool.py, small tool to copy/paste, smooth, soft and set weights values'''
+'''yg_weightTool.py, small tool to copy/paste, smooth, soft, set, add weights values'''
 
 '''use:
    ->just drag and n drop on maya to open it
    ->select a mesh, click on "set", choose your deformer and that's it
    ->work with skinCluster, blendshape, cluster, lattice, nonLinear, wire, jiggle, shrinkWrap, deltaMush, tension, proximityWrap and textureDeformer deformers'''
 
-'''base settings:
+'''base hotkey settings:
     ->ctrl + c: copy weights
     ->ctrl + v: paste weights
     ->ctrl + x: set weights
@@ -19,7 +19,7 @@ import maya.OpenMaya as om
 
 __author__      = "Yann GENTY"
 __email__       = "y.genty.cs@gmail.com"
-__version__     = "1.4.0"
+__version__     = "1.5.1"
 __copyright__   = "Copyright (c) 2024, Yann GENTY"
 
 ############################## FUNCTIONS ##
@@ -492,13 +492,15 @@ def copyPaste(index):
                         cmds.setAttr(deformer_bs + ".inputTarget[0].inputTargetGroup[" + targetIndex + "].targetWeights[" + vtxIndex + "]", pasteWeight) 
                     message("paste " + str(pasteWeight))
                 else:                                        #other deformers
+                    autoAdd(sel, deformer)
                     for vtx in sel:                          
                         if not checkDeformer(vtx, deformerSet):
                             info(vtx + " isn't in '" + deformer + "', paste not applied")
+                            message("")
                             pass
                         else:                        
                             cmds.percent(deformer, vtx, value=pasteWeight)               
-                    message("paste " + str(pasteWeight))
+                            message("paste " + str(pasteWeight))
 
 def smoothWeight():
     '''smooth weight, depend than deformer selected'''
@@ -507,55 +509,62 @@ def smoothWeight():
         return
     else:
         deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
+        sel = cmds.ls(sl=True, fl=True) 
+        if sel and "vtx" in sel[0]:
+            if "." in deformer:
+                baseSel = cmds.ls(sl=True, fl=True)
+                mesh = cmds.textField("tf0", q=True, tx=True)
 
-        if "." in deformer:
-            baseSel = cmds.ls(sl=True, fl=True)
-            mesh = cmds.textField("tf0", q=True, tx=True)
+                cmds.select(mesh) #need to select mesh when load tool to prevent error message
+                cmds.ArtPaintBlendShapeWeightsTool()
+                mel.eval('artBlendShapeSelectTarget artAttrCtx "{}";'.format(cmds.textScrollList("tsl", query=True, selectItem=True)[0].split(".")[1]))
 
-            cmds.select(mesh) #need to select mesh when load tool to prevent error message
-            cmds.ArtPaintBlendShapeWeightsTool()
-            mel.eval('artBlendShapeSelectTarget artAttrCtx "{}";'.format(cmds.textScrollList("tsl", query=True, selectItem=True)[0].split(".")[1]))
+                cmds.select(baseSel) #reselect vtx base sel before smooth their weights
 
-            cmds.select(baseSel) #reselect vtx base sel before smooth their weights
+                backSAO = cmds.artAttrCtx(cmds.currentCtx(), q=True, sao=True) #save old settings
+                backValue = cmds.artAttrCtx(cmds.currentCtx(), q=True, value=True)
 
-            backSAO = cmds.artAttrCtx(cmds.currentCtx(), q=True, sao=True) #save old settings
-            backValue = cmds.artAttrCtx(cmds.currentCtx(), q=True, value=True)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, sao="smooth") #smooth weights
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=False)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, value=1)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, clear=True)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=True)
 
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, sao="smooth") #smooth weights
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=False)
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, value=1)
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, clear=True)
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=True)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, sao=backSAO) #go back to old settings
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, value=backValue)
 
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, sao=backSAO) #go back to old settings
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, value=backValue)
+                mel.eval("setToolTo $gSelect") #return to selection tool, and select base vtx sel on mesh
+                mel.eval('doMenuComponentSelectionExt("{}", "{}", 0);'.format(mesh,"vertex"))
+                cmds.select(baseSel)
 
-            mel.eval("setToolTo $gSelect") #return to selection tool, and select base vtx sel on mesh
-            mel.eval('doMenuComponentSelectionExt("{}", "{}", 0);'.format(mesh,"vertex"))
-            cmds.select(baseSel)
+            elif cmds.nodeType(deformer) == "skinCluster":
+                mel.eval('doSmoothSkinWeightsArgList 3 { "0", "5", "0", "1"   }')
 
-        elif cmds.nodeType(deformer) == "skinCluster":
-            mel.eval('doSmoothSkinWeightsArgList 3 { "0", "5", "0", "1"   }')
+            else:
+                addSel = autoAdd(sel, deformer)
+                if addSel:
+                    cmds.select(addSel, add=True)
 
+                cmds.ArtPaintAttrTool()
+                mel.eval('artSetToolAndSelectAttr( "artAttrCtx", "cluster.{}.weights" );'.format(cmds.textScrollList("tsl", query=True, selectItem=True)[0]))
+
+                backSAO = cmds.artAttrCtx(cmds.currentCtx(), q=True, sao=True) #save old settings
+                backValue = cmds.artAttrCtx(cmds.currentCtx(), q=True, value=True)
+
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, sao="smooth")
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=False)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, value=1)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, clear=True)
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=True)
+
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, sao=backSAO) #go back to old settings
+                cmds.artAttrCtx(cmds.currentCtx(), e=True, value=backValue)
+                
+                mel.eval("setToolTo $gSelect")
+
+            message("smooth applied")
         else:
-            cmds.ArtPaintAttrTool()
-            mel.eval('artSetToolAndSelectAttr( "artAttrCtx", "cluster.{}.weights" );'.format(cmds.textScrollList("tsl", query=True, selectItem=True)[0]))
-
-            backSAO = cmds.artAttrCtx(cmds.currentCtx(), q=True, sao=True) #save old settings
-            backValue = cmds.artAttrCtx(cmds.currentCtx(), q=True, value=True)
-
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, sao="smooth")
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=False)
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, value=1)
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, clear=True)
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, colorfeedback=True)
-
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, sao=backSAO) #go back to old settings
-            cmds.artAttrCtx(cmds.currentCtx(), e=True, value=backValue)
-            
-            mel.eval("setToolTo $gSelect")
-
-    message("smooth applied")
+            message("select vertex")
 
 def setWeight(deformer, sel):
     '''set a new weight on the selected vertex, dont work for skinCluster'''
@@ -578,6 +587,9 @@ def setWeight(deformer, sel):
         message("set " + str(weight))
 
 def softWeight():
+    '''transform softSelection in deformer weight'''
+
+    #dedication to Jeroen Hoolmans, from whom I took and modified this piece of code found here: https://gist.github.com/jhoolmans/9195634
     sel = cmds.ls(sl=True)
     deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
 
@@ -618,6 +630,7 @@ def softWeight():
                         iter.next()
 
                     selection = ["%s.vtx[%d]" % (el[0], el[1])for el in elements] 
+                    autoAdd(selection, deformer)
 
                     if "." in deformer: #if blendshape
                         target = deformer.split(".")[1]
@@ -640,16 +653,33 @@ def addWeight():
     deformerSet = cmds.listConnections(deformer, type="objectSet")[0]
     sel = cmds.ls(sl=True, fl=True)
     if cmds.nodeType(deformer) == "skinCluster" or "." in deformer:
-        message("does not work for skinCluster or blendshape")
+        message("work only for common deformers")
         return
     else:
         for component in sel:
             if not "vtx" in component:
                 message("select only vertex")
                 return
-        for vtx in sel:
-            cmds.sets(vtx, add=deformerSet)
-        message("vertex add in " + deformer)
+
+        cmds.sets(sel, add=deformerSet)
+        cmds.percent(deformer, sel, v=0)
+        message("vertex add in " + deformer + ", set to 0")
+
+def autoAdd(sel, deformer):
+    '''automatically adds vertex that are not in the deformer set'''
+    if not cmds.menuItem("cb9", q=True, checkBox=True) :
+        return
+    else:
+        deformerSet = cmds.listConnections(deformer, type="objectSet")[0]
+        setMembers = cmds.ls(cmds.sets(deformerSet, query=True), flatten=True)
+        vtxList = [vtx for vtx in sel if vtx not in setMembers]   
+        
+        if vtxList: #add vtx in deformer and set them at 0, then return vtx list
+            cmds.sets(vtxList, add=deformerSet)
+            cmds.percent(deformer, vtxList, v=0)
+            return vtxList
+        else:
+            return None
 
 #################################### LIB ##
 
@@ -858,20 +888,19 @@ def mainWindow():
     cmds.menuItem("dvd0", parent=ppm, label="", divider=True)
     cmds.menuItem(parent=ppm, label="sel vertices member", c=Callback(selectInfluence, 2))
     cmds.menuItem(parent=ppm, label="sel vertices member on mesh", ann="select influenced vertices only on selected mesh", c=Callback(selectInfluence, 1))
-    cmds.menuItem("cb0", parent=ppm, label="autoframe on sel", checkBox=True, c=Callback(autoFrame))
-    cmds.menuItem(parent=ppm, label="", divider=True)
-    cmds.menuItem(parent=ppm, label="add sel to deformer", ann="add selected component to deformer influence, does not work for blendshape and skinCluster", c=Callback(addWeight))
-    # TODO
-    #cmds.menuItem("cb2", parent=ppm, label="auto add sel to deformer", ann="automatically add components not under the influence of the deformer", checkBox=False, c=Callback(addWeight))    
-    cmds.menuItem(parent=ppm, label="", divider=True)
     cmds.menuItem(parent=ppm, label="open paint tool", ann="open the appropriate paint weight tool and select the deformer", c=Callback(openTool).repeatable())
     cmds.menuItem(parent=ppm, label="soft sel weight", ann="transforms softSelection values into weight, does not work for skinCluster", c=Callback(softWeight).repeatable())
+    cmds.menuItem(parent=ppm, label="", divider=True)
+    cmds.menuItem("cb0", parent=ppm, label="autoframe on sel", checkBox=True, c=Callback(autoFrame))
+    cmds.menuItem(parent=ppm, label="add sel to deformer", ann="add selected component to deformer influence, only work for common deformers", c=Callback(addWeight))
+    cmds.menuItem("cb9", parent=ppm, label="auto add sel to deformer", ann="automatically add components not under the influence of the deformer, only work for common deformers", checkBox=False)    
     cmds.menuItem(parent=ppm, label="", divider=True)
     sm = cmds.menuItem(parent=ppm, label="show", subMenu=True, docTag=True)
     cmds.menuItem(parent=sm, label="All", c=Callback(showAll))    
     cmds.menuItem(parent=sm, label="None", c=Callback(showNone))   
     cmds.menuItem("cb_skinCluster", parent=sm, label="skinCluster", checkBox=True, c=Callback(setObject, 1))
     cmds.menuItem("cb_blendShape", parent=sm, label="blendShape", checkBox=True, c=Callback(setObject, 1))
+    cmds.menuItem(parent=sm, label="common deformers", divider=True)
     cmds.menuItem("cb_cluster", parent=sm, label="cluster", checkBox=True, c=Callback(setObject, 1))
     cmds.menuItem("cb_lattice", parent=sm, label="lattice", checkBox=True, c=Callback(setObject, 1))
     cmds.menuItem("cb_nonLinear", parent=sm, label="nonLinear", checkBox=True, c=Callback(setObject, 1))
