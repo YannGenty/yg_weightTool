@@ -4,14 +4,14 @@ import maya.mel as mel
 from PySide2.QtGui import QCursor
 import maya.OpenMaya as om
 
-'''yg_weightTool.py, small tool to copy/paste, smooth, soft and set weights values'''
+'''yg_weightTool.py, small tool to copy/paste, smooth, soft, set, add weights values'''
 
 '''use:
    ->just drag and n drop on maya to open it
    ->select a mesh, click on "set", choose your deformer and that's it
    ->work with skinCluster, blendshape, cluster, lattice, nonLinear, wire, jiggle, shrinkWrap, deltaMush, tension, proximityWrap and textureDeformer deformers'''
 
-'''base settings:
+'''base hotkey settings:
     ->ctrl + c: copy weights
     ->ctrl + v: paste weights
     ->ctrl + x: set weights
@@ -19,7 +19,7 @@ import maya.OpenMaya as om
 
 __author__      = "Yann GENTY"
 __email__       = "y.genty.cs@gmail.com"
-__version__     = "1.5.0"
+__version__     = "1.5.1"
 __copyright__   = "Copyright (c) 2024, Yann GENTY"
 
 ############################## FUNCTIONS ##
@@ -496,10 +496,11 @@ def copyPaste(index):
                     for vtx in sel:                          
                         if not checkDeformer(vtx, deformerSet):
                             info(vtx + " isn't in '" + deformer + "', paste not applied")
+                            message("")
                             pass
                         else:                        
                             cmds.percent(deformer, vtx, value=pasteWeight)               
-                    message("paste " + str(pasteWeight))
+                            message("paste " + str(pasteWeight))
 
 def smoothWeight():
     '''smooth weight, depend than deformer selected'''
@@ -586,6 +587,9 @@ def setWeight(deformer, sel):
         message("set " + str(weight))
 
 def softWeight():
+    '''transform softSelection in deformer weight'''
+
+    #dedication to Jeroen Hoolmans, from whom I took and modified this piece of code found here: https://gist.github.com/jhoolmans/9195634
     sel = cmds.ls(sl=True)
     deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
 
@@ -626,6 +630,7 @@ def softWeight():
                         iter.next()
 
                     selection = ["%s.vtx[%d]" % (el[0], el[1])for el in elements] 
+                    autoAdd(selection, deformer)
 
                     if "." in deformer: #if blendshape
                         target = deformer.split(".")[1]
@@ -655,9 +660,10 @@ def addWeight():
             if not "vtx" in component:
                 message("select only vertex")
                 return
-        for vtx in sel:
-            cmds.sets(vtx, add=deformerSet)
-        message("vertex add in " + deformer)
+
+        cmds.sets(sel, add=deformerSet)
+        cmds.percent(deformer, sel, v=0)
+        message("vertex add in " + deformer + ", set to 0")
 
 def autoAdd(sel, deformer):
     '''automatically adds vertex that are not in the deformer set'''
@@ -882,13 +888,12 @@ def mainWindow():
     cmds.menuItem("dvd0", parent=ppm, label="", divider=True)
     cmds.menuItem(parent=ppm, label="sel vertices member", c=Callback(selectInfluence, 2))
     cmds.menuItem(parent=ppm, label="sel vertices member on mesh", ann="select influenced vertices only on selected mesh", c=Callback(selectInfluence, 1))
-    cmds.menuItem("cb0", parent=ppm, label="autoframe on sel", checkBox=True, c=Callback(autoFrame))
-    cmds.menuItem(parent=ppm, label="", divider=True)
-    cmds.menuItem(parent=ppm, label="add sel to deformer", ann="add selected component to deformer influence, only work for common deformers", c=Callback(addWeight))
-    cmds.menuItem("cb9", parent=ppm, label="auto add sel to deformer", ann="automatically add components not under the influence of the deformer, only work for common deformers", checkBox=False)    
-    cmds.menuItem(parent=ppm, label="", divider=True)
     cmds.menuItem(parent=ppm, label="open paint tool", ann="open the appropriate paint weight tool and select the deformer", c=Callback(openTool).repeatable())
     cmds.menuItem(parent=ppm, label="soft sel weight", ann="transforms softSelection values into weight, does not work for skinCluster", c=Callback(softWeight).repeatable())
+    cmds.menuItem(parent=ppm, label="", divider=True)
+    cmds.menuItem("cb0", parent=ppm, label="autoframe on sel", checkBox=True, c=Callback(autoFrame))
+    cmds.menuItem(parent=ppm, label="add sel to deformer", ann="add selected component to deformer influence, only work for common deformers", c=Callback(addWeight))
+    cmds.menuItem("cb9", parent=ppm, label="auto add sel to deformer", ann="automatically add components not under the influence of the deformer, only work for common deformers", checkBox=False)    
     cmds.menuItem(parent=ppm, label="", divider=True)
     sm = cmds.menuItem(parent=ppm, label="show", subMenu=True, docTag=True)
     cmds.menuItem(parent=sm, label="All", c=Callback(showAll))    
