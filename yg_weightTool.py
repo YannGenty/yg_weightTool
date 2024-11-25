@@ -252,8 +252,10 @@ def autoFrame():
 
 def openTool():
     deformer = cmds.textScrollList("tsl", query=True, selectItem=True)
-    if "." in deformer[0]:
+    if not cmds.ls(sl=True): #select mesh if nothing is selected
         cmds.select(cmds.textField("tf0", q=True, tx=True))
+
+    if "." in deformer[0]:
 
         if not cmds.artAttrCtx("artAttrBlendShapeContext", q=True, exists=True):
             cmds.artAttrCtx("artAttrBlendShapeContext", i1="paintBlendshape.png", whichTool="blendShapeWeights")
@@ -662,7 +664,8 @@ def addWeight():
                 return
 
         cmds.sets(sel, add=deformerSet)
-        cmds.percent(deformer, sel, v=0)
+        cmds.percent(deformer, sel, v=1)
+        setWeight(deformer, sel)    #open setWeight window after processing
         message("vertex add in " + deformer + ", set to 0")
 
 def autoAdd(sel, deformer):
