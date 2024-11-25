@@ -21,3 +21,8 @@
 - ctrl + v: paste weights
 - ctrl + x: set weights
 - alt + x: smooth weights
+
+***
+#### _todo:_
+- _blendshape paint weight tool bug fix at start_
+- _drag n drop to open .py file bug fix_
