@@ -25,4 +25,3 @@
 ***
 #### _todo:_
 - _blendshape paint weight tool bug fix at start_
-- _drag n drop to open .py file bug fix_
