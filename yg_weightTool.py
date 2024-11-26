@@ -927,8 +927,6 @@ def initialize():
     if cmds.ls(sl=True):
         setObject(0)
 
-mainWindow()
-initialize()
-
-def onMayaDroppedPythonFile(args) :
-    print(args)
+def onMayaDroppedPythonFile(*args, **kwargs) :
+    mainWindow()
+    initialize()
