@@ -13,7 +13,7 @@
 - **soft selection** to weights
 - **open paint weight tool** with right deformer selected on right click
 -  **select and frame** on vertex member of deformer
--  **add new vertex** in deformer without open maya's relationship editor
+-  **add or remove new vertex** from deformer without open maya's relationship editor
 -  **automatically add** vertices not influenced by the deformer
 ***
 #### **base hotkeys settings:**
