@@ -664,9 +664,26 @@ def addWeight():
                 return
 
         cmds.sets(sel, add=deformerSet)
-        cmds.percent(deformer, sel, v=1)
-        setWeight(deformer, sel)    #open setWeight window after processing
-        message("vertex add in " + deformer + ", set to 0")
+        cmds.percent(deformer, sel, v=0)
+        setWeightWindow()    #open setWeight window after processing
+        message("vertex added in " + deformer)
+
+def removeWeight():
+    '''add selected component (only vertex) in selected deformer influence'''
+    deformer = cmds.textScrollList("tsl", query=True, selectItem=True)[0]
+    deformerSet = cmds.listConnections(deformer, type="objectSet")[0]
+    sel = cmds.ls(sl=True, fl=True)
+    if cmds.nodeType(deformer) == "skinCluster" or "." in deformer:
+        message("work only for common deformers")
+        return
+    else:
+        for component in sel:
+            if not "vtx" in component:
+                message("select only vertex")
+                return            
+            
+        cmds.sets(sel, remove=deformerSet)
+        message("vertex removed from " + deformer + "")
 
 def autoAdd(sel, deformer):
     '''automatically adds vertex that are not in the deformer set'''
@@ -896,6 +913,7 @@ def mainWindow():
     cmds.menuItem(parent=ppm, label="", divider=True)
     cmds.menuItem("cb0", parent=ppm, label="autoframe on sel", checkBox=True, c=Callback(autoFrame))
     cmds.menuItem(parent=ppm, label="add sel to deformer", ann="add selected component to deformer influence, only work for common deformers", c=Callback(addWeight))
+    cmds.menuItem(parent=ppm, label="remove sel from deformer", ann="remove selected component from deformer influence, only work for common deformers", c=Callback(removeWeight))
     cmds.menuItem("cb9", parent=ppm, label="auto add sel to deformer", ann="automatically add components not under the influence of the deformer, only work for common deformers", checkBox=False)    
     cmds.menuItem(parent=ppm, label="", divider=True)
     sm = cmds.menuItem(parent=ppm, label="show", subMenu=True, docTag=True)
