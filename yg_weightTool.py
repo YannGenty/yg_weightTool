@@ -19,7 +19,7 @@ import maya.OpenMaya as om
 
 __author__      = "Yann GENTY"
 __email__       = "y.genty.cs@gmail.com"
-__version__     = "1.5.7"
+__version__     = "1.6.1"
 __copyright__   = "Copyright (c) 2024, Yann GENTY"
 
 ############################## FUNCTIONS ##
@@ -948,3 +948,6 @@ def initialize():
 def onMayaDroppedPythonFile(*args, **kwargs) :
     mainWindow()
     initialize()
+
+mainWindow()
+initialize()
