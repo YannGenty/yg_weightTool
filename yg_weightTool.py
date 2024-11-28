@@ -1,7 +1,10 @@
 from maya import cmds
 import math
 import maya.mel as mel
-from PySide2.QtGui import QCursor
+try:
+    from PySide2.QtGui import QCursor
+except:
+    from PySide6.QtGui import QCursor
 import maya.OpenMaya as om
 
 '''yg_weightTool.py, small tool to copy/paste, smooth, soft, set, add weights values'''
