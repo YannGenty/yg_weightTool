@@ -21,7 +21,3 @@
 - ctrl + v: paste weights
 - ctrl + x: set weights
 - alt + x: smooth weights
-
-***
-#### _todo:_
-- _blendshape paint weight tool bug fix at start_
